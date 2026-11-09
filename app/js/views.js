@@ -7,7 +7,7 @@ import {
   addToCart, setQuantity, removeFromCart, clearCart, getItems, getQuantity, MAX_QUANTITY,
 } from './cart.js';
 import {
-  submitOrderRequest, getOrderRequests, getOrderRequest, STATUS_LABELS,
+  submitOrderRequest, getOrderRequests, getOrderRequest, getPreviouslyOrdered, STATUS_LABELS,
 } from './orders.js';
 import { searchProducts } from './search.js';
 
@@ -51,6 +51,18 @@ function addToCartButton(product, quantityFrom = () => 1) {
     },
   }, label);
   return button;
+}
+
+// Reads a quantity input; shows a message and returns 0 if it's invalid.
+function readQuantityFrom(input) {
+  const value = Number(input.value);
+  if (!Number.isInteger(value) || value < 1 || value > MAX_QUANTITY) {
+    input.setCustomValidity(`Enter a whole number from 1 to ${MAX_QUANTITY.toLocaleString('en-CA')}.`);
+    input.reportValidity();
+    return 0;
+  }
+  input.setCustomValidity('');
+  return value;
 }
 
 function quantityInput(attributes) {
@@ -110,7 +122,17 @@ function firstImageInCategory(data, category) {
   return data.productsBySubcategory.get(firstSub?.id)?.[0]?.image;
 }
 
-export function categoriesView(data) {
+export async function categoriesView(data, customer) {
+  const reorderCount = (await getPreviouslyOrdered(customer.id))
+    .filter((item) => data.productsById.has(item.productId)).length;
+  const reorderCard = h('li', {},
+    h('a', { class: 'card card-reorder', href: '#/reorder' },
+      h('img', { src: 'images/reorder.svg', alt: '', width: 200, height: 200 }),
+      h('span', { class: 'card-title' }, 'Re-Order'),
+      h('span', { class: 'card-meta' }, reorderCount
+        ? `${plural(reorderCount, 'product')} you've ordered before`
+        : 'Products you order will appear here')));
+
   const cards = data.categories.map((category) => {
     const image = firstImageInCategory(data, category);
     return h('li', {},
@@ -126,7 +148,7 @@ export function categoriesView(data) {
     title: 'Product categories',
     content: h('section', {},
       h('h1', {}, 'Product categories'),
-      h('ul', { class: 'card-grid' }, cards)),
+      h('ul', { class: 'card-grid' }, reorderCard, cards)),
   };
 }
 
@@ -165,7 +187,22 @@ function statusBadge(status) {
   return h('span', { class: `badge badge-${status.toLowerCase()}` }, status);
 }
 
-function productCard(product) {
+// reorder (optional): { lastOrderedAt, lastQuantity, timesOrdered } adds the
+// order history and a quantity box filled in with the last quantity.
+function productCard(product, reorder = null) {
+  let quantityFrom;
+  let quantityRow = null;
+  if (reorder && product.status !== 'Discontinued') {
+    const input = quantityInput({
+      value: Math.min(reorder.lastQuantity, MAX_QUANTITY),
+      'aria-label': `Quantity of ${product.name}`,
+    });
+    input.addEventListener('input', () => input.setCustomValidity(''));
+    quantityFrom = () => readQuantityFrom(input);
+    quantityRow = h('div', { class: 'card-add-row' },
+      input, addToCartButton(product, quantityFrom));
+  }
+
   return h('li', { class: 'product' },
     h('a', { href: productHref(product), tabindex: -1, 'aria-hidden': 'true' },
       h('img', { src: product.image, alt: '', width: 200, height: 200, loading: 'lazy' })),
@@ -176,10 +213,47 @@ function productCard(product) {
         h('span', {}, `Item ${product.itemNumber}`),
         h('span', {}, `UPC ${product.upc}`)),
       h('p', { class: 'product-description' }, product.description),
+      reorder
+        ? h('p', { class: 'reorder-history' },
+          `Last ordered ${formatDateTime(reorder.lastOrderedAt)}: ${reorder.lastQuantity.toLocaleString('en-CA')}. `
+          + `Ordered ${reorder.timesOrdered === 1 ? 'once' : `${reorder.timesOrdered} times`}.`)
+        : null,
       h('p', { class: 'product-price-row' },
         h('span', { class: 'product-price' }, formatPrice(product.priceCents)),
         statusBadge(product.status)),
-      addToCartButton(product)));
+      quantityRow ?? addToCartButton(product)));
+}
+
+// ---------------------------------------------------------------- Re-Order
+
+export async function reorderView(data, customer) {
+  const items = (await getPreviouslyOrdered(customer.id))
+    .map((item) => ({ ...item, product: data.productsById.get(item.productId) }))
+    .filter((item) => item.product); // skip products no longer in the catalogue
+
+  const crumbs = breadcrumbs([{ label: 'Categories', href: '#/' }, { label: 'Re-Order' }]);
+  if (items.length === 0) {
+    return {
+      title: 'Re-Order',
+      content: h('section', {},
+        crumbs,
+        h('h1', {}, 'Re-Order'),
+        h('p', {}, "You haven't ordered anything yet. Products from your Order Requests will appear here, "
+          + 'so you can order them again quickly.'),
+        h('p', {}, h('a', { href: '#/' }, 'Browse products'))),
+    };
+  }
+
+  return {
+    title: 'Re-Order',
+    content: h('section', {},
+      crumbs,
+      h('h1', {}, 'Re-Order'),
+      h('p', { class: 'count' },
+        `${plural(items.length, 'product')} you've ordered before, most recent first. `
+        + 'Quantities are filled in from your last order.'),
+      h('ul', { class: 'product-list' }, items.map((item) => productCard(item.product, item)))),
+  };
 }
 
 export function subcategoryView(data, category, sub) {
@@ -195,7 +269,7 @@ export function subcategoryView(data, category, sub) {
       ]),
       h('h1', {}, sub.name),
       h('p', { class: 'count' }, plural(products.length, 'product')),
-      h('ul', { class: 'product-list' }, products.map(productCard))),
+      h('ul', { class: 'product-list' }, products.map((product) => productCard(product)))),
   };
 }
 
@@ -225,7 +299,7 @@ export function searchView(data, query) {
     content: h('section', {},
       h('h1', {}, `Search results for “${trimmed}”`),
       h('p', { class: 'count', role: 'status' }, summary),
-      results.length ? h('ul', { class: 'product-list' }, results.map(productCard)) : null),
+      results.length ? h('ul', { class: 'product-list' }, results.map((product) => productCard(product))) : null),
   };
 }
 
@@ -233,16 +307,7 @@ export function searchView(data, query) {
 
 export function productView(data, product) {
   const input = quantityInput({ id: 'quantity', value: 1 });
-  const readQuantity = () => {
-    const value = Math.floor(Number(input.value));
-    if (!Number.isFinite(value) || value < 1 || value > MAX_QUANTITY) {
-      input.setCustomValidity(`Enter a whole number from 1 to ${MAX_QUANTITY.toLocaleString('en-CA')}.`);
-      input.reportValidity();
-      return 0;
-    }
-    input.setCustomValidity('');
-    return value;
-  };
+  const readQuantity = () => readQuantityFrom(input);
   input.addEventListener('input', () => input.setCustomValidity(''));
 
   const statusNote = {

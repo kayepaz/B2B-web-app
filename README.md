@@ -5,8 +5,8 @@ Business customers sign in, browse products by category, add items to a
 cart and submit an **Order Request**.
 
 > **Status:** early development. You can sign in as a sample user, browse
-> or search products, fill a cart and submit Order Requests, online or
-> offline. Sending to the order-processing system is simulated.
+> or search products, re-order past items, fill a cart and submit Order
+> Requests, online or offline. Sending to the order-processing system is simulated.
 
 ## What it will do
 

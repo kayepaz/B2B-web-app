@@ -4,6 +4,7 @@
 // file server without special configuration:
 //   #/login                     sample-user sign-in
 //   #/                          all categories
+//   #/reorder                   products the customer has ordered before
 //   #/c/<categoryId>            subcategories in a category
 //   #/c/<categoryId>/<subId>    products in a subcategory
 //   #/p/<productId>             one product
@@ -21,7 +22,7 @@ import { onOrdersChange, sendQueued } from './orders.js';
 import { startPwa } from './pwa.js';
 import { plural } from './format.js';
 import {
-  loginView, categoriesView, categoryView, subcategoryView, productView, cartView,
+  loginView, categoriesView, reorderView, categoryView, subcategoryView, productView, cartView,
   checkoutView, ordersView, orderView, searchView, notFoundView, errorView,
 } from './views.js';
 
@@ -121,7 +122,8 @@ function chooseView(data, parts, customer) {
     return null;
   }
 
-  if (parts.length === 0) return categoriesView(data);
+  if (parts.length === 0) return categoriesView(data, customer);
+  if (parts[0] === 'reorder' && parts.length === 1) return reorderView(data, customer);
 
   if (parts[0] === 'c' && parts.length <= 3) {
     const category = data.categoriesById.get(parts[1]);
