@@ -5,8 +5,8 @@ Business customers sign in, browse products by category, add items to a
 cart and submit an **Order Request**.
 
 > **Status:** early development. You can sign in as a sample user, browse
-> categories and products, fill a cart and submit Order Requests. Sending
-> to the order-processing system is simulated.
+> or search products, fill a cart and submit Order Requests, online or
+> offline. Sending to the order-processing system is simulated.
 
 ## What it will do
 
@@ -91,6 +91,7 @@ app/                 The PWA itself (served as static files)
   js/dom.js          Safe element builder (no innerHTML)
   js/format.js       Price, date and address formatting
   js/pwa.js          Registers the service worker; Install button; offline notice
+  js/search.js       Product search
   data/              Generated JSON data (not committed)
   images/products/   Generated product images (not committed)
 docs/                Project documentation

@@ -9,6 +9,7 @@ import {
 import {
   submitOrderRequest, getOrderRequests, getOrderRequest, STATUS_LABELS,
 } from './orders.js';
+import { searchProducts } from './search.js';
 
 function productHref(product) {
   return `#/p/${encodeURIComponent(product.id)}`;
@@ -195,6 +196,36 @@ export function subcategoryView(data, category, sub) {
       h('h1', {}, sub.name),
       h('p', { class: 'count' }, plural(products.length, 'product')),
       h('ul', { class: 'product-list' }, products.map(productCard))),
+  };
+}
+
+// ---------------------------------------------------------------- Search
+
+export function searchView(data, query) {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return {
+      title: 'Search',
+      content: h('section', {},
+        h('h1', {}, 'Search'),
+        h('p', {}, 'Type a product name, item number or UPC in the search box.')),
+    };
+  }
+
+  const { total, results } = searchProducts(data, trimmed);
+  let summary;
+  if (total === 0) summary = 'No products found. Try fewer or different words.';
+  else if (total > results.length) {
+    summary = `Showing the first ${results.length} of ${plural(total, 'product')}. `
+      + 'Add more words to narrow the search.';
+  } else summary = `${plural(total, 'product')} found.`;
+
+  return {
+    title: `Search: ${trimmed}`,
+    content: h('section', {},
+      h('h1', {}, `Search results for “${trimmed}”`),
+      h('p', { class: 'count', role: 'status' }, summary),
+      results.length ? h('ul', { class: 'product-list' }, results.map(productCard)) : null),
   };
 }
 

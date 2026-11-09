@@ -11,6 +11,7 @@
 //   #/checkout                  review and submit an Order Request
 //   #/orders                    the customer's Order Requests
 //   #/orders/<orderRequestId>   one Order Request
+//   #/search/<words>            product search results
 
 import { h } from './dom.js';
 import { getData } from './data.js';
@@ -21,16 +22,23 @@ import { startPwa } from './pwa.js';
 import { plural } from './format.js';
 import {
   loginView, categoriesView, categoryView, subcategoryView, productView, cartView,
-  checkoutView, ordersView, orderView, notFoundView, errorView,
+  checkoutView, ordersView, orderView, searchView, notFoundView, errorView,
 } from './views.js';
 
 const APP_NAME = 'B2B Ordering Portal';
 const main = document.getElementById('main');
 const userArea = document.getElementById('user-area');
+const searchArea = document.getElementById('search-area');
 
 function parseRoute() {
   const path = location.hash.replace(/^#/, '') || '/';
-  return path.split('/').filter(Boolean).map(decodeURIComponent);
+  return path.split('/').filter(Boolean).map((part) => {
+    try {
+      return decodeURIComponent(part);
+    } catch {
+      return part; // a malformed link, e.g. a stray "%"
+    }
+  });
 }
 
 function cartLink() {
@@ -44,10 +52,42 @@ function cartLink() {
   h('span', { class: 'cart-count', 'aria-hidden': 'true' }, count.toLocaleString('en-CA')));
 }
 
+function searchForm() {
+  const parts = parseRoute();
+  const input = h('input', {
+    type: 'search',
+    id: 'search-input',
+    name: 'q',
+    placeholder: 'Search name, item number or UPC',
+    'aria-label': 'Search products',
+    autocomplete: 'off',
+    value: parts[0] === 'search' ? (parts[1] ?? '') : '',
+  });
+  return h('form', {
+    role: 'search',
+    class: 'search-form',
+    onsubmit: (event) => {
+      event.preventDefault(); // handled here; nothing is sent anywhere
+      const query = input.value.trim();
+      if (query) location.hash = `#/search/${encodeURIComponent(query)}`;
+    },
+  }, input, h('button', { type: 'submit', class: 'search-button' }, 'Search'));
+}
+
 function renderHeader(data, customer) {
   if (!customer) {
     userArea.replaceChildren();
+    searchArea.replaceChildren();
     return;
+  }
+  // Keep the search box (and what's being typed) unless the route changed it.
+  const existing = searchArea.querySelector('#search-input');
+  const parts = parseRoute();
+  const routeQuery = parts[0] === 'search' ? (parts[1] ?? '') : '';
+  if (!existing || (parts[0] === 'search' && existing.value !== routeQuery)) {
+    searchArea.replaceChildren(searchForm());
+  } else if (parts[0] !== 'search' && document.activeElement !== existing) {
+    existing.value = '';
   }
   const company = data.companies.get(customer.companyId);
   userArea.replaceChildren(
@@ -97,6 +137,7 @@ function chooseView(data, parts, customer) {
     return product ? productView(data, product) : notFoundView();
   }
 
+  if (parts[0] === 'search' && parts.length <= 2) return searchView(data, parts[1] ?? '');
   if (parts[0] === 'cart' && parts.length === 1) return cartView(data);
   if (parts[0] === 'checkout' && parts.length === 1) return checkoutView(data, customer);
   if (parts[0] === 'orders' && parts.length === 1) return ordersView(data, customer);
