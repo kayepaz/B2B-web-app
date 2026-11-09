@@ -47,8 +47,8 @@ CATALOG = [
         ("Gadget Power Cells", "Power Cell"),
     ]),
     ("Sprockets", "SPR", "sprocket", [
-        ("Steel Sprockets", "Steel Sprocket"),
-        ("Nylon Sprockets", "Nylon Sprocket"),
+        ("Drive Sprockets", "Drive Sprocket"),
+        ("Idler Sprockets", "Idler Sprocket"),
         ("Double Sprockets", "Double Sprocket"),
         ("Sprocket Chains", "Sprocket Chain"),
     ]),
