@@ -4,8 +4,8 @@ An open-source B2B ordering portal, built as a Progressive Web App (PWA).
 Business customers sign in, browse products by category, add items to a
 cart and submit an **Order Request**.
 
-> **Status:** early development. The sample data generator works; the app
-> itself is not built yet.
+> **Status:** early development. You can sign in as a sample user and
+> browse categories and products. The cart and checkout are not built yet.
 
 ## What it will do
 
@@ -38,10 +38,9 @@ python3 tools/generate_data.py
 python3 -m http.server 8000 --directory app
 ```
 
-Then open <http://localhost:8000>. Until the app pages are built, this
-shows a file listing where you can browse the generated data and images.
-Browsers allow service workers on `localhost`, so the PWA features will
-work without HTTPS during development.
+Then open <http://localhost:8000>. Browsers allow service workers on
+`localhost`, so the PWA features will work without HTTPS during
+development.
 
 The generator is deterministic: the same `--seed` always produces the same
 data. Run `python3 tools/generate_data.py --help` for options, such as
@@ -51,6 +50,14 @@ data. Run `python3 tools/generate_data.py --help` for options, such as
 
 ```
 app/                 The PWA itself (served as static files)
+  index.html         The single page the app runs in
+  css/styles.css     All styles
+  js/app.js          Entry point: routing and page rendering
+  js/views.js        One function per screen
+  js/data.js         Loads the data files and builds lookups
+  js/session.js      Stub sign-in (stand-in for Entra SSO)
+  js/dom.js          Safe element builder (no innerHTML)
+  js/format.js       Price and number formatting
   data/              Generated JSON data (not committed)
   images/products/   Generated product images (not committed)
 docs/                Project documentation
