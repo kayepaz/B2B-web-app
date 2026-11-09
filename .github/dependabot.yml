@@ -1,0 +1,12 @@
+# The app has no package dependencies. The only third-party code is the
+# GitHub Actions in .github/workflows, pinned to exact commits. Dependabot
+# opens a pull request when a newer release of one of them comes out.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ['*']

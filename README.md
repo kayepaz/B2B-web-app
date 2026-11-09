@@ -113,6 +113,11 @@ All sample data is fictional:
 
 See [docs/data-model.md](docs/data-model.md) for the data format.
 
+## Security
+
+See [SECURITY.md](SECURITY.md) for how to report a vulnerability privately
+and how the project keeps its attack surface small.
+
 ## License
 
 [0BSD](LICENSE): use it for anything, no attribution required.
