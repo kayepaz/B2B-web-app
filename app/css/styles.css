@@ -170,6 +170,8 @@ main:focus { outline: none; }
 .card-title { font-weight: 600; }
 .card-meta { color: var(--muted); font-size: 0.85rem; }
 
+.card-reorder { border-color: var(--brand); background: #f3f8fc; }
+
 /* ---------------------------------------------------------------- Product list */
 
 .product-list {
@@ -238,6 +240,18 @@ main:focus { outline: none; }
 .product-name a { color: inherit; text-decoration: none; }
 .product-name a:hover { text-decoration: underline; }
 .product > a { display: block; }
+
+.reorder-history {
+  margin: 0 0 0.6rem;
+  font-size: 0.85rem;
+  color: var(--brand-dark);
+  background: #eef5fa;
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+}
+
+.card-add-row { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+.card-add-row .primary-button { flex: 1; }
 
 /* ---------------------------------------------------------------- Buttons and inputs */
 

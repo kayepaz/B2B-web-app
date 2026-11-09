@@ -121,6 +121,29 @@ export async function getOrderRequests(customerId) {
   return [...byId.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+// Every product this customer has ordered before, most recently ordered
+// first: [{ productId, lastOrderedAt, lastQuantity, timesOrdered }].
+export async function getPreviouslyOrdered(customerId) {
+  const orders = await getOrderRequests(customerId); // newest first
+  const items = new Map();
+  for (const order of orders) {
+    for (const line of order.lines) {
+      const existing = items.get(line.productId);
+      if (existing) {
+        existing.timesOrdered += 1;
+      } else {
+        items.set(line.productId, {
+          productId: line.productId,
+          lastOrderedAt: order.createdAt,
+          lastQuantity: line.quantity,
+          timesOrdered: 1,
+        });
+      }
+    }
+  }
+  return [...items.values()];
+}
+
 // Returns the Order Request only if it belongs to this customer.
 export async function getOrderRequest(customerId, id) {
   let order = memory.get(id);
