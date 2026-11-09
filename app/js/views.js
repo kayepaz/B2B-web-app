@@ -10,6 +10,7 @@ import {
   submitOrderRequest, getOrderRequests, getOrderRequest, getPreviouslyOrdered, STATUS_LABELS,
 } from './orders.js';
 import { searchProducts } from './search.js';
+import { upcBarcodeSvg } from './barcode.js';
 
 function productHref(product) {
   return `#/p/${encodeURIComponent(product.id)}`;
@@ -327,6 +328,7 @@ export function productView(data, product) {
             h('dt', {}, 'Item number'), h('dd', {}, product.itemNumber),
             h('dt', {}, 'UPC'), h('dd', {}, product.upc),
             h('dt', {}, 'Status'), h('dd', {}, product.status)),
+          h('div', { class: 'product-barcode' }, upcBarcodeSvg(product.upc)),
           h('p', { class: 'product-price large' }, formatPrice(product.priceCents)),
           statusNote ? h('p', { class: `status-note status-${product.status.toLowerCase()}` }, statusNote) : null,
           h('p', {}, product.description),
@@ -633,6 +635,53 @@ export async function orderView(data, customer, id) {
         h('p', { class: 'fine-print' },
           'Prices are as they were when the Order Request was submitted. '
           + 'No taxes, delivery fees or other charges are included.'))),
+  };
+}
+
+// ---------------------------------------------------------------- Sample barcode sheet
+
+// A valid UPC that isn't in the catalogue, to try the "not found" message.
+const UNKNOWN_UPC = '012345678905';
+
+function sampleProducts(data) {
+  // The first product (by name) in each subcategory...
+  const picks = data.categories.flatMap((category) => category.subcategories
+    .map((sub) => data.productsBySubcategory.get(sub.id)?.[0])
+    .filter(Boolean));
+  // ...plus a backordered and a discontinued one, if not already included.
+  for (const status of ['Backordered', 'Discontinued']) {
+    if (!picks.some((product) => product.status === status)) {
+      const extra = [...data.productsById.values()].find((product) => product.status === status);
+      if (extra) picks.push(extra);
+    }
+  }
+  return picks;
+}
+
+export function barcodeSheetView(data) {
+  const cell = (title, meta, upc) => h('li', { class: 'barcode-cell' },
+    h('span', { class: 'barcode-title' }, title),
+    h('span', { class: 'product-meta' }, meta),
+    upcBarcodeSvg(upc));
+
+  const cells = sampleProducts(data).map((product) => cell(
+    product.name,
+    `${product.itemNumber}${product.status === 'Active' ? '' : ` · ${product.status}`}`,
+    product.upc));
+  cells.push(cell('Not in the catalogue', 'For testing the "not found" message', UNKNOWN_UPC));
+
+  return {
+    title: 'Sample barcodes',
+    content: h('section', { class: 'barcode-sheet' },
+      breadcrumbs([{ label: 'Scan', href: '#/scan' }, { label: 'Sample barcodes' }]),
+      h('h1', {}, 'Sample barcodes'),
+      h('p', { class: 'no-print' },
+        'The products in this demo are made up, so here are barcodes to practise on: one product from '
+        + 'each subcategory, plus a backordered one, a discontinued one and a barcode that isn’t in the '
+        + 'catalogue. Print this page, or scan it from another device’s screen.'),
+      h('p', { class: 'no-print' },
+        h('button', { type: 'button', class: 'primary-button', onclick: () => window.print() }, 'Print')),
+      h('ul', { class: 'barcode-grid' }, cells)),
   };
 }
 

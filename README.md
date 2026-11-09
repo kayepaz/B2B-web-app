@@ -4,9 +4,9 @@ An open-source B2B ordering portal, built as a Progressive Web App (PWA).
 Business customers sign in, browse products by category, add items to a
 cart and submit an **Order Request**.
 
-> **Status:** early development. You can sign in as a sample user, browse
-> or search products, re-order past items, fill a cart and submit Order
-> Requests, online or offline. Sending to the order-processing system is simulated.
+> **Status:** early development. You can sign in as a sample user, browse,
+> search or scan products, re-order past items, fill a cart and submit
+> Order Requests, online or offline. Sending to the order-processing system is simulated.
 
 ## What it will do
 
@@ -46,6 +46,25 @@ After the first visit the app works offline: you can browse every product
 (images you've already seen, plus a placeholder for the rest), fill your
 cart and submit Order Requests. They're sent automatically when you
 reconnect.
+
+### Scanning barcodes
+
+- **Camera:** tap **Scan** in the header, then **Start camera**. Choose
+  whether a scan opens the product or **quick-adds** one to the cart so
+  you can keep scanning (each item counts once while it stays in view).
+- **Handheld USB or Bluetooth scanners** work on any page with no setup:
+  scanning opens the product, or quick-adds when the Scan page is in that
+  mode.
+- **No camera?** Type the UPC on the Scan page.
+- **Something to scan:** the products are made up, so every product page
+  shows its barcode, and **Scan → sample barcode sheet** has a printable
+  page of 34 barcodes (including a backordered and a discontinued
+  product, and one that isn't in the catalogue).
+
+The camera uses the browser's built-in barcode reader where there is one
+(Chrome and Edge on Android, ChromeOS and macOS) and the app's own reader
+everywhere else, including iPhone, Firefox and Windows. Images are processed
+on the device and never uploaded.
 
 ## Running it locally
 
@@ -92,6 +111,9 @@ app/                 The PWA itself (served as static files)
   js/format.js       Price, date and address formatting
   js/pwa.js          Registers the service worker; Install button; offline notice
   js/search.js       Product search
+  js/barcode.js      Draws and reads UPC-A / EAN-13 barcodes (no libraries)
+  js/scanner.js      Camera and handheld-scanner input
+  js/scanview.js     The Scan page
   data/              Generated JSON data (not committed)
   images/products/   Generated product images (not committed)
 docs/                Project documentation
