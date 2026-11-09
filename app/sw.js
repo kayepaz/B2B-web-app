@@ -36,6 +36,7 @@ const APP_FILES = [
   'js/format.js',
   'js/orders.js',
   'js/pwa.js',
+  'js/search.js',
   'js/session.js',
   'js/views.js',
   'data/index.json',

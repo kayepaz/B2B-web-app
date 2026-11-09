@@ -427,6 +427,29 @@ address { font-style: normal; display: flex; flex-direction: column; }
 
 .order-facts .product-facts { margin: 0; }
 
+/* ---------------------------------------------------------------- Search */
+
+.search-area { flex: 1; display: flex; justify-content: center; min-width: 0; }
+.search-form { display: flex; width: 100%; max-width: 28rem; }
+.search-form input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: 6px 0 0 6px;
+}
+.search-button {
+  border: none;
+  border-radius: 0 6px 6px 0;
+  padding: 0.4rem 0.8rem;
+  background: #ffffff2e;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.search-button:hover { background: #ffffff47; }
+
 /* ---------------------------------------------------------------- Offline and install */
 
 .header-actions { display: flex; align-items: center; gap: 0.75rem; }
@@ -444,6 +467,9 @@ address { font-style: normal; display: flex; flex-direction: column; }
 /* ---------------------------------------------------------------- Small screens */
 
 @media (max-width: 800px) {
+  .site-header { flex-wrap: wrap; }
+  .search-area { order: 3; flex-basis: 100%; }
+  .search-form { max-width: none; }
   .cart-table.order-table tr,
   .cart-table.orders-list tr { padding-left: 0.75rem; min-height: 0; }
   .orders-list td:not(.num)[data-label] { display: flex; justify-content: space-between; }
