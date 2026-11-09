@@ -27,7 +27,16 @@ cart and submit an **Order Request**.
 - **Works offline.** A service worker caches the app and its data.
 - **Browser built-ins only.** IndexedDB stores the cart and Order Requests.
 
-## Getting started
+## Try it
+
+The latest version of `main` is published at
+**<https://kayepaz.github.io/B2B-web-app/>**.
+
+It's rebuilt automatically by the
+[Deploy to GitHub Pages](.github/workflows/pages.yml) workflow whenever
+`main` changes. Carts are saved in your own browser only.
+
+## Running it locally
 
 You only need Python 3.7 or newer. There is nothing to install.
 
