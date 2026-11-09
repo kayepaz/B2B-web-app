@@ -13,17 +13,21 @@
 //   #/orders                    the customer's Order Requests
 //   #/orders/<orderRequestId>   one Order Request
 //   #/search/<words>            product search results
+//   #/scan                      scan barcodes (camera, handheld or typed)
+//   #/barcodes                  printable sample barcodes
 
-import { h } from './dom.js';
+import { h, showToast } from './dom.js';
 import { getData } from './data.js';
 import { currentCustomerId, signOut } from './session.js';
 import { useCartFor, itemCount, onCartChange } from './cart.js';
 import { onOrdersChange, sendQueued } from './orders.js';
 import { startPwa } from './pwa.js';
+import { listenForHandheldScanner, scanFeedback } from './scanner.js';
+import { scanView } from './scanview.js';
 import { plural } from './format.js';
 import {
   loginView, categoriesView, reorderView, categoryView, subcategoryView, productView, cartView,
-  checkoutView, ordersView, orderView, searchView, notFoundView, errorView,
+  checkoutView, ordersView, orderView, searchView, barcodeSheetView, notFoundView, errorView,
 } from './views.js';
 
 const APP_NAME = 'B2B Ordering Portal';
@@ -92,7 +96,10 @@ function renderHeader(data, customer) {
   }
   const company = data.companies.get(customer.companyId);
   userArea.replaceChildren(
-    h('a', { class: 'header-link', href: '#/orders' }, 'Order Requests'),
+    h('a', { class: 'header-link', href: '#/scan' }, 'Scan'),
+    h('a', { class: 'header-link', href: '#/orders' },
+      h('span', { class: 'long-label' }, 'Order Requests'),
+      h('span', { class: 'short-label' }, 'Orders')),
     cartLink(),
     h('span', { class: 'signed-in-as' },
       h('span', { class: 'user-name' }, `${customer.firstName} ${customer.lastName}`),
@@ -139,6 +146,8 @@ function chooseView(data, parts, customer) {
     return product ? productView(data, product) : notFoundView();
   }
 
+  if (parts[0] === 'scan' && parts.length === 1) return scanView(data);
+  if (parts[0] === 'barcodes' && parts.length === 1) return barcodeSheetView(data);
   if (parts[0] === 'search' && parts.length <= 2) return searchView(data, parts[1] ?? '');
   if (parts[0] === 'cart' && parts.length === 1) return cartView(data);
   if (parts[0] === 'checkout' && parts.length === 1) return checkoutView(data, customer);
@@ -150,6 +159,7 @@ function chooseView(data, parts, customer) {
 
 let firstRender = true;
 let latestRender = 0;
+let cleanUpCurrentView = null; // e.g. turns the camera off when leaving Scan
 
 // moveFocus: after navigating, move focus to the new page's heading.
 // It is false when the same page is redrawn (e.g. the cart changed).
@@ -178,6 +188,14 @@ async function render({ moveFocus = true } = {}) {
   const focusKey = moveFocus ? null : document.activeElement?.dataset?.key;
 
   document.title = `${view.title} – ${APP_NAME}`;
+  if (cleanUpCurrentView) {
+    try {
+      cleanUpCurrentView();
+    } catch (error) {
+      console.warn(error);
+    }
+  }
+  cleanUpCurrentView = view.cleanup ?? null;
   main.replaceChildren(view.content);
 
   if (focusKey) {
@@ -216,6 +234,24 @@ onCartChange(async () => {
 // Redraw Order Request pages when a status changes (e.g. it was sent).
 onOrdersChange(() => {
   if (parseRoute()[0] === 'orders') setTimeout(() => render({ moveFocus: false }), 0);
+});
+
+// A handheld scanner scan on any page (the Scan page handles its own).
+listenForHandheldScanner(async (code) => {
+  const data = await getData();
+  if (!data.customersById.get(currentCustomerId())) {
+    showToast('Sign in to look up scanned products.', 'error');
+    return;
+  }
+  const product = data.productsByUpc.get(code);
+  if (!product) {
+    scanFeedback(false);
+    showToast(`Barcode ${code} isn't in the catalogue.`, 'error');
+    return;
+  }
+  scanFeedback(true);
+  showToast(`Scanned: ${product.name}`, 'success');
+  location.hash = `#/p/${encodeURIComponent(product.id)}`;
 });
 
 window.addEventListener('hashchange', () => render());

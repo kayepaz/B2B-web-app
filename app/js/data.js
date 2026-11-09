@@ -52,6 +52,7 @@ async function load() {
     categoriesById: byId(categories),
     subcategories,
     productsById: byId(products),
+    productsByUpc: new Map(products.map((product) => [product.upc, product])),
     productsBySubcategory,
     productCountByCategory,
     companies: byId(companies),
