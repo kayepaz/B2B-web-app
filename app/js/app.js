@@ -6,12 +6,17 @@
 //   #/                          all categories
 //   #/c/<categoryId>            subcategories in a category
 //   #/c/<categoryId>/<subId>    products in a subcategory
+//   #/p/<productId>             one product
+//   #/cart                      the cart
 
 import { h } from './dom.js';
 import { getData } from './data.js';
 import { currentCustomerId, signOut } from './session.js';
+import { useCartFor, itemCount, onCartChange } from './cart.js';
+import { plural } from './format.js';
 import {
-  loginView, categoriesView, categoryView, subcategoryView, notFoundView, errorView,
+  loginView, categoriesView, categoryView, subcategoryView, productView, cartView,
+  notFoundView, errorView,
 } from './views.js';
 
 const APP_NAME = 'B2B Ordering Portal';
@@ -20,8 +25,18 @@ const userArea = document.getElementById('user-area');
 
 function parseRoute() {
   const path = location.hash.replace(/^#/, '') || '/';
-  const parts = path.split('/').filter(Boolean).map(decodeURIComponent);
-  return parts;
+  return path.split('/').filter(Boolean).map(decodeURIComponent);
+}
+
+function cartLink() {
+  const count = itemCount();
+  return h('a', {
+    class: 'cart-link',
+    href: '#/cart',
+    'aria-label': `Cart, ${plural(count, 'item')}`,
+  },
+  'Cart',
+  h('span', { class: 'cart-count', 'aria-hidden': 'true' }, count.toLocaleString('en-CA')));
 }
 
 function renderHeader(data, customer) {
@@ -31,6 +46,7 @@ function renderHeader(data, customer) {
   }
   const company = data.companies.get(customer.companyId);
   userArea.replaceChildren(
+    cartLink(),
     h('span', { class: 'signed-in-as' },
       h('span', { class: 'user-name' }, `${customer.firstName} ${customer.lastName}`),
       h('span', { class: 'user-company' }, company?.name ?? '')),
@@ -69,16 +85,26 @@ function chooseView(data, parts, customer) {
     return subcategoryView(data, category, sub);
   }
 
+  if (parts[0] === 'p' && parts.length === 2) {
+    const product = data.productsById.get(parts[1]);
+    return product ? productView(data, product) : notFoundView();
+  }
+
+  if (parts[0] === 'cart' && parts.length === 1) return cartView(data);
+
   return notFoundView();
 }
 
 let firstRender = true;
 
-async function render() {
+// moveFocus: after navigating, move focus to the new page's heading.
+// It is false when the same page is redrawn (e.g. the cart changed).
+async function render({ moveFocus = true } = {}) {
   let view;
   try {
     const data = await getData();
     const customer = data.customersById.get(currentCustomerId()) ?? null;
+    await useCartFor(customer?.id ?? null);
     renderHeader(data, customer);
     view = chooseView(data, parseRoute(), customer);
     if (!view) return; // redirected; the hashchange will render again
@@ -88,21 +114,46 @@ async function render() {
       + 'If you are running the app locally, run "python3 tools/generate_data.py" first.');
   }
 
+  // When redrawing in place, remember which control has focus (by its
+  // data-key) so keyboard users don't lose their place. This is read just
+  // before redrawing, after the browser has finished moving focus.
+  const focusKey = moveFocus ? null : document.activeElement?.dataset?.key;
+
   document.title = `${view.title} – ${APP_NAME}`;
   main.replaceChildren(view.content);
-  window.scrollTo(0, 0);
 
-  // Move keyboard and screen-reader focus to the new page's heading,
-  // except on first load, where the browser's default is better.
-  if (!firstRender) {
-    const heading = main.querySelector('h1');
-    if (heading) {
-      heading.setAttribute('tabindex', '-1');
-      heading.focus();
-    }
+  if (focusKey) {
+    const same = main.querySelector(`[data-key="${CSS.escape(focusKey)}"]`);
+    if (same) same.focus();
+    else focusHeading(); // e.g. the focused row was removed
+  } else if (moveFocus) {
+    window.scrollTo(0, 0);
+    // Skipped on first load, where the browser's default is better.
+    if (!firstRender) focusHeading();
   }
   firstRender = false;
 }
 
-window.addEventListener('hashchange', render);
+function focusHeading() {
+  const heading = main.querySelector('h1');
+  if (heading) {
+    heading.setAttribute('tabindex', '-1');
+    heading.focus({ preventScroll: true });
+  }
+}
+
+// Keep the header's cart count current, and redraw the cart page itself
+// when its contents change.
+onCartChange(async () => {
+  const data = await getData();
+  const customer = data.customersById.get(currentCustomerId()) ?? null;
+  renderHeader(data, customer);
+  if (parseRoute()[0] === 'cart') {
+    // Wait one tick: a quantity change fires while focus is still moving
+    // (e.g. on Tab), and the redraw needs to know where focus ended up.
+    setTimeout(() => render({ moveFocus: false }), 0);
+  }
+});
+
+window.addEventListener('hashchange', () => render());
 render();

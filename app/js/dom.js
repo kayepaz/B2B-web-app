@@ -7,6 +7,15 @@
 //   h('a', { href: '#/', class: 'link' }, 'Home')
 //   h('button', { type: 'button', onclick: () => alert('hi') }, 'Click me')
 
+// Read a short message to screen-reader users (e.g. "Added to cart").
+export function announce(message) {
+  const region = document.getElementById('announcer');
+  if (!region) return;
+  region.textContent = '';
+  // A short delay makes screen readers notice repeated identical messages.
+  setTimeout(() => { region.textContent = message; }, 50);
+}
+
 export function h(tag, attributes = {}, ...children) {
   const element = document.createElement(tag);
 

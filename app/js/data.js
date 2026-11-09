@@ -51,6 +51,7 @@ async function load() {
     categories,
     categoriesById: byId(categories),
     subcategories,
+    productsById: byId(products),
     productsBySubcategory,
     productCountByCategory,
     companies: byId(companies),

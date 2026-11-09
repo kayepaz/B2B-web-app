@@ -4,8 +4,9 @@ An open-source B2B ordering portal, built as a Progressive Web App (PWA).
 Business customers sign in, browse products by category, add items to a
 cart and submit an **Order Request**.
 
-> **Status:** early development. You can sign in as a sample user and
-> browse categories and products. The cart and checkout are not built yet.
+> **Status:** early development. You can sign in as a sample user, browse
+> categories and products, and add products to a cart. Submitting an Order
+> Request is not built yet.
 
 ## What it will do
 
@@ -55,6 +56,7 @@ app/                 The PWA itself (served as static files)
   js/app.js          Entry point: routing and page rendering
   js/views.js        One function per screen
   js/data.js         Loads the data files and builds lookups
+  js/cart.js         Each customer's cart, saved in IndexedDB
   js/session.js      Stub sign-in (stand-in for Entra SSO)
   js/dom.js          Safe element builder (no innerHTML)
   js/format.js       Price and number formatting
