@@ -7,7 +7,7 @@
 const MAX_RESULTS = 100;
 
 // Lower-case and remove accents, so "Gizmo" matches "gizmo" and "café" matches "cafe".
-function normalize(text) {
+export function normalize(text) {
   return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
@@ -42,10 +42,11 @@ function rank(entry, query) {
   return 2;
 }
 
-// Returns { total, results } where results holds at most MAX_RESULTS products.
+// Returns every matching product, best matches first. Pages show at most
+// MAX_RESULTS of them at once.
 export function searchProducts(data, rawQuery) {
   const query = normalize(rawQuery.trim());
-  if (!query) return { total: 0, results: [] };
+  if (!query) return [];
   index ??= buildIndex(data);
 
   const words = query.split(/\s+/);
@@ -54,10 +55,7 @@ export function searchProducts(data, rawQuery) {
   matches.sort((a, b) => rank(a, query) - rank(b, query)
     || a.product.name.localeCompare(b.product.name));
 
-  return {
-    total: matches.length,
-    results: matches.slice(0, MAX_RESULTS).map((entry) => entry.product),
-  };
+  return matches.map((entry) => entry.product);
 }
 
 export { MAX_RESULTS };
