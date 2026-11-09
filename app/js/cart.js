@@ -7,52 +7,24 @@
 // If IndexedDB is unavailable the cart still works, but only until the page
 // is reloaded.
 
-const DB_NAME = 'b2b-web-app';
-const DB_VERSION = 1;
+import { getRecord, putRecord } from './db.js';
+
 const STORE = 'carts';
 
 export const MAX_QUANTITY = 9999;
 
-let dbPromise = null;
 let customerId = null;
 let items = []; // [{ productId, quantity }]
 const listeners = new Set();
 
-function openDb() {
-  dbPromise ??= new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => {
-      request.result.createObjectStore(STORE, { keyPath: 'customerId' });
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  }).catch((error) => {
-    console.warn('Cart storage unavailable; the cart will not be saved.', error);
-    return null;
-  });
-  return dbPromise;
-}
-
-async function read(id) {
-  const db = await openDb();
-  if (!db) return null;
-  return new Promise((resolve, reject) => {
-    const request = db.transaction(STORE).objectStore(STORE).get(id);
-    request.onsuccess = () => resolve(request.result ?? null);
-    request.onerror = () => reject(request.error);
-  });
-}
-
 async function save() {
-  const db = await openDb();
-  if (!db || !customerId) return;
+  if (!customerId) return;
   const record = { customerId, items, updatedAt: new Date().toISOString() };
-  await new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE, 'readwrite');
-    transaction.objectStore(STORE).put(record);
-    transaction.oncomplete = resolve;
-    transaction.onerror = () => reject(transaction.error);
-  }).catch((error) => console.warn('Could not save the cart.', error));
+  try {
+    await putRecord(STORE, record);
+  } catch (error) {
+    console.warn('Could not save the cart.', error);
+  }
 }
 
 function changed() {
@@ -73,7 +45,7 @@ export async function useCartFor(id) {
   items = [];
   if (id) {
     try {
-      const record = await read(id);
+      const record = await getRecord(STORE, id);
       if (customerId === id) items = record?.items ?? [];
     } catch (error) {
       console.warn('Could not load the cart.', error);

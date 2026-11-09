@@ -1,11 +1,14 @@
 // One function per screen. Each returns { title, content }.
 
 import { h, announce } from './dom.js';
-import { formatPrice, plural } from './format.js';
+import { formatPrice, formatDateTime, formatAddress, plural } from './format.js';
 import { signIn } from './session.js';
 import {
-  addToCart, setQuantity, removeFromCart, getItems, getQuantity, MAX_QUANTITY,
+  addToCart, setQuantity, removeFromCart, clearCart, getItems, getQuantity, MAX_QUANTITY,
 } from './cart.js';
+import {
+  submitOrderRequest, getOrderRequests, getOrderRequest, STATUS_LABELS,
+} from './orders.js';
 
 function productHref(product) {
   return `#/p/${encodeURIComponent(product.id)}`;
@@ -260,10 +263,11 @@ function cartRow(product, quantity) {
   return h('tr', {},
     h('td', { class: 'cart-image' },
       h('img', { src: product.image, alt: '', width: 64, height: 64 })),
-    h('td', { class: 'cart-product' },
-      h('a', { href: productHref(product) }, product.name),
-      h('span', { class: 'product-meta' }, `Item ${product.itemNumber}`),
-      statusBadge(product.status)),
+    h('td', {},
+      h('div', { class: 'cart-product' },
+        h('a', { href: productHref(product) }, product.name),
+        h('span', { class: 'product-meta' }, `Item ${product.itemNumber}`),
+        statusBadge(product.status))),
     h('td', { class: 'num', 'data-label': 'Price' }, formatPrice(product.priceCents)),
     h('td', { class: 'num', 'data-label': 'Quantity' }, input),
     h('td', { class: 'num', 'data-label': 'Total' },
@@ -282,9 +286,7 @@ function cartRow(product, quantity) {
 }
 
 export function cartView(data) {
-  const lines = getItems()
-    .map((item) => ({ product: data.productsById.get(item.productId), quantity: item.quantity }))
-    .filter((line) => line.product); // skip products no longer in the catalogue
+  const lines = cartLines(data);
 
   if (lines.length === 0) {
     return {
@@ -329,8 +331,212 @@ export function cartView(data) {
           h('span', { class: 'product-price large' }, formatPrice(subtotal))),
         h('p', { class: 'fine-print' },
           'Order Requests do not include taxes, delivery fees or other charges.'),
-        h('button', { type: 'button', class: 'primary-button', disabled: true },
-          'Submit Order Request (coming soon)'))),
+        orderable.length
+          ? h('a', { class: 'primary-button', href: '#/checkout' }, 'Review and submit')
+          : h('button', { type: 'button', class: 'primary-button', disabled: true },
+            'Review and submit'))),
+  };
+}
+
+// The cart's lines with their products, skipping unknown products.
+function cartLines(data) {
+  return getItems()
+    .map((item) => ({ product: data.productsById.get(item.productId), quantity: item.quantity }))
+    .filter((line) => line.product);
+}
+
+// ---------------------------------------------------------------- Checkout
+
+function addressBlock(address) {
+  return h('address', {}, formatAddress(address).map((line) => h('span', {}, line)));
+}
+
+export function checkoutView(data, customer) {
+  const lines = cartLines(data).filter((line) => line.product.status !== 'Discontinued');
+  const company = data.companies.get(customer.companyId);
+
+  if (lines.length === 0) {
+    return {
+      title: 'Review Order Request',
+      content: h('section', {},
+        h('h1', {}, 'Review Order Request'),
+        h('p', {}, 'There is nothing to order. Your cart is empty or only has discontinued items.'),
+        h('p', {}, h('a', { href: '#/cart' }, 'Back to cart'))),
+    };
+  }
+
+  const total = lines.reduce((sum, line) => sum + line.product.priceCents * line.quantity, 0);
+
+  // Ship-to location: one of the company's locations.
+  const locations = company?.locations ?? [];
+  const select = h('select', { id: 'ship-to' },
+    locations.map((location) => h('option', { value: location.id }, location.name)));
+  const shipToAddress = h('div', { class: 'ship-to-address' });
+  const showAddress = () => {
+    const shipTo = locations.find((loc) => loc.id === select.value);
+    shipToAddress.replaceChildren(shipTo
+      ? h('div', {}, addressBlock(shipTo.address), h('span', { class: 'fine-print' }, shipTo.phone))
+      : '');
+  };
+  select.addEventListener('change', showAddress);
+  showAddress();
+
+  const error = h('p', { class: 'status-note status-discontinued', role: 'alert', hidden: true });
+  const submit = h('button', {
+    type: 'button',
+    class: 'primary-button',
+    onclick: async () => {
+      submit.disabled = true;
+      submit.textContent = 'Submitting…';
+      error.hidden = true;
+      try {
+        const order = await submitOrderRequest({ customer, locationId: select.value, lines });
+        await clearCart();
+        announce(`Order Request ${order.id} submitted.`);
+        location.hash = `#/orders/${encodeURIComponent(order.id)}`;
+      } catch (problem) {
+        console.error(problem);
+        error.textContent = 'The Order Request could not be saved. Please try again.';
+        error.hidden = false;
+        submit.disabled = false;
+        submit.textContent = 'Submit Order Request';
+      }
+    },
+  }, 'Submit Order Request');
+
+  return {
+    title: 'Review Order Request',
+    content: h('section', { class: 'checkout' },
+      breadcrumbs([{ label: 'Cart', href: '#/cart' }, { label: 'Review Order Request' }]),
+      h('h1', {}, 'Review Order Request'),
+      h('div', { class: 'panel' },
+        h('label', { for: 'ship-to', class: 'field-label' }, 'Ship to'),
+        select,
+        shipToAddress),
+      orderLinesTable(lines.map(({ product, quantity }) => ({
+        name: product.name,
+        itemNumber: product.itemNumber,
+        href: productHref(product),
+        quantity,
+        unitPriceCents: product.priceCents,
+      }))),
+      h('div', { class: 'cart-summary' },
+        h('p', { class: 'subtotal' },
+          h('span', {}, 'Total'),
+          h('span', { class: 'product-price large' }, formatPrice(total))),
+        h('p', { class: 'fine-print' },
+          'No taxes, delivery fees or other charges are added. '
+          + `You'll get an email at ${customer.email} when your Order Request is processed.`),
+        error,
+        submit)),
+  };
+}
+
+// Read-only table of order lines (used by checkout and Order Request pages).
+function orderLinesTable(lines) {
+  return h('table', { class: 'cart-table order-table' },
+    h('thead', {},
+      h('tr', {},
+        h('th', {}, 'Product'),
+        h('th', { class: 'num' }, 'Price'),
+        h('th', { class: 'num' }, 'Quantity'),
+        h('th', { class: 'num' }, 'Total'))),
+    h('tbody', {}, lines.map((line) => h('tr', {},
+      h('td', {},
+        h('div', { class: 'cart-product' },
+          line.href ? h('a', { href: line.href }, line.name) : h('span', {}, line.name),
+          h('span', { class: 'product-meta' }, `Item ${line.itemNumber}`))),
+      h('td', { class: 'num', 'data-label': 'Price' }, formatPrice(line.unitPriceCents)),
+      h('td', { class: 'num', 'data-label': 'Quantity' }, line.quantity.toLocaleString('en-CA')),
+      h('td', { class: 'num', 'data-label': 'Total' },
+        formatPrice(line.unitPriceCents * line.quantity))))));
+}
+
+// ---------------------------------------------------------------- Order Requests
+
+function statusPill(order) {
+  return h('span', { class: `badge badge-order-${order.status}` },
+    STATUS_LABELS[order.status] ?? order.status);
+}
+
+function orderHref(order) {
+  return `#/orders/${encodeURIComponent(order.id)}`;
+}
+
+export async function ordersView(data, customer) {
+  const orders = await getOrderRequests(customer.id);
+
+  if (orders.length === 0) {
+    return {
+      title: 'Order Requests',
+      content: h('section', {},
+        h('h1', {}, 'Order Requests'),
+        h('p', {}, "You haven't submitted any Order Requests yet."),
+        h('p', {}, h('a', { href: '#/' }, 'Browse products'))),
+    };
+  }
+
+  return {
+    title: 'Order Requests',
+    content: h('section', {},
+      h('h1', {}, 'Order Requests'),
+      h('table', { class: 'cart-table orders-list' },
+        h('thead', {},
+          h('tr', {},
+            h('th', {}, 'Order Request'),
+            h('th', {}, 'Submitted'),
+            h('th', { class: 'num' }, 'Lines'),
+            h('th', { class: 'num' }, 'Total'),
+            h('th', {}, 'Status'))),
+        h('tbody', {}, orders.map((order) => h('tr', {},
+          h('td', {}, h('a', { href: orderHref(order) }, order.id)),
+          h('td', { 'data-label': 'Submitted' }, formatDateTime(order.createdAt)),
+          h('td', { class: 'num', 'data-label': 'Lines' }, order.lines.length),
+          h('td', { class: 'num', 'data-label': 'Total' }, formatPrice(order.totalCents)),
+          h('td', {}, statusPill(order))))))),
+  };
+}
+
+export async function orderView(data, customer, id) {
+  const order = await getOrderRequest(customer.id, id);
+  if (!order) return notFoundView();
+
+  const company = data.companies.get(order.companyId);
+  const shipTo = company?.locations.find((loc) => loc.id === order.locationId);
+
+  const statusText = order.status === 'sent'
+    ? `Sent for processing (confirmation ${order.confirmationNumber}). `
+      + `You'll get an email at ${customer.email} when it has been processed.`
+    : 'Saved and waiting to send. It will be sent automatically when you are back online.';
+
+  return {
+    title: `Order Request ${order.id}`,
+    content: h('section', { class: 'order-detail' },
+      breadcrumbs([{ label: 'Order Requests', href: '#/orders' }, { label: order.id }]),
+      h('h1', {}, `Order Request ${order.id}`),
+      h('p', { class: `status-note status-order-${order.status}`, role: 'status' }, statusText),
+      h('div', { class: 'panel order-facts' },
+        h('dl', { class: 'product-facts' },
+          h('dt', {}, 'Submitted'), h('dd', {}, formatDateTime(order.createdAt)),
+          h('dt', {}, 'Status'), h('dd', {}, statusPill(order)),
+          h('dt', {}, 'Company'), h('dd', {}, company?.name ?? ''),
+          h('dt', {}, 'Ship to'),
+          h('dd', {}, shipTo
+            ? [h('strong', {}, shipTo.name), addressBlock(shipTo.address)]
+            : 'Unknown location'))),
+      orderLinesTable(order.lines.map((line) => ({
+        ...line,
+        href: data.productsById.has(line.productId)
+          ? productHref(data.productsById.get(line.productId))
+          : null,
+      }))),
+      h('div', { class: 'cart-summary' },
+        h('p', { class: 'subtotal' },
+          h('span', {}, 'Total'),
+          h('span', { class: 'product-price large' }, formatPrice(order.totalCents))),
+        h('p', { class: 'fine-print' },
+          'Prices are as they were when the Order Request was submitted. '
+          + 'No taxes, delivery fees or other charges are included.'))),
   };
 }
 

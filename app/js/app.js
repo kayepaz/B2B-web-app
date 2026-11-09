@@ -8,15 +8,19 @@
 //   #/c/<categoryId>/<subId>    products in a subcategory
 //   #/p/<productId>             one product
 //   #/cart                      the cart
+//   #/checkout                  review and submit an Order Request
+//   #/orders                    the customer's Order Requests
+//   #/orders/<orderRequestId>   one Order Request
 
 import { h } from './dom.js';
 import { getData } from './data.js';
 import { currentCustomerId, signOut } from './session.js';
 import { useCartFor, itemCount, onCartChange } from './cart.js';
+import { onOrdersChange, sendQueued } from './orders.js';
 import { plural } from './format.js';
 import {
   loginView, categoriesView, categoryView, subcategoryView, productView, cartView,
-  notFoundView, errorView,
+  checkoutView, ordersView, orderView, notFoundView, errorView,
 } from './views.js';
 
 const APP_NAME = 'B2B Ordering Portal';
@@ -46,6 +50,7 @@ function renderHeader(data, customer) {
   }
   const company = data.companies.get(customer.companyId);
   userArea.replaceChildren(
+    h('a', { class: 'header-link', href: '#/orders' }, 'Order Requests'),
     cartLink(),
     h('span', { class: 'signed-in-as' },
       h('span', { class: 'user-name' }, `${customer.firstName} ${customer.lastName}`),
@@ -60,6 +65,7 @@ function renderHeader(data, customer) {
     }, 'Sign out'));
 }
 
+// Returns a view, a promise of one, or null after a redirect.
 function chooseView(data, parts, customer) {
   if (parts[0] === 'login') {
     if (customer) {
@@ -91,28 +97,36 @@ function chooseView(data, parts, customer) {
   }
 
   if (parts[0] === 'cart' && parts.length === 1) return cartView(data);
+  if (parts[0] === 'checkout' && parts.length === 1) return checkoutView(data, customer);
+  if (parts[0] === 'orders' && parts.length === 1) return ordersView(data, customer);
+  if (parts[0] === 'orders' && parts.length === 2) return orderView(data, customer, parts[1]);
 
   return notFoundView();
 }
 
 let firstRender = true;
+let latestRender = 0;
 
 // moveFocus: after navigating, move focus to the new page's heading.
 // It is false when the same page is redrawn (e.g. the cart changed).
 async function render({ moveFocus = true } = {}) {
+  const thisRender = ++latestRender;
   let view;
   try {
     const data = await getData();
     const customer = data.customersById.get(currentCustomerId()) ?? null;
     await useCartFor(customer?.id ?? null);
     renderHeader(data, customer);
-    view = chooseView(data, parseRoute(), customer);
+    view = await chooseView(data, parseRoute(), customer);
     if (!view) return; // redirected; the hashchange will render again
   } catch (error) {
     console.error(error);
     view = errorView('The product data could not be loaded. '
       + 'If you are running the app locally, run "python3 tools/generate_data.py" first.');
   }
+
+  // A newer render started while this one was loading; let it win.
+  if (thisRender !== latestRender) return;
 
   // When redrawing in place, remember which control has focus (by its
   // data-key) so keyboard users don't lose their place. This is read just
@@ -155,5 +169,11 @@ onCartChange(async () => {
   }
 });
 
+// Redraw Order Request pages when a status changes (e.g. it was sent).
+onOrdersChange(() => {
+  if (parseRoute()[0] === 'orders') setTimeout(() => render({ moveFocus: false }), 0);
+});
+
 window.addEventListener('hashchange', () => render());
 render();
+sendQueued(); // send anything saved while offline last time
