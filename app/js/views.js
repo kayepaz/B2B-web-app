@@ -9,7 +9,8 @@ import {
 import {
   submitOrderRequest, getOrderRequests, getOrderRequest, getPreviouslyOrdered, STATUS_LABELS,
 } from './orders.js';
-import { searchProducts } from './search.js';
+import { searchProducts, MAX_RESULTS } from './search.js';
+import { productListing } from './listview.js';
 import { upcBarcodeSvg } from './barcode.js';
 
 function productHref(product) {
@@ -250,10 +251,12 @@ export async function reorderView(data, customer) {
     content: h('section', {},
       crumbs,
       h('h1', {}, 'Re-Order'),
-      h('p', { class: 'count' },
-        `${plural(items.length, 'product')} you've ordered before, most recent first. `
-        + 'Quantities are filled in from your last order.'),
-      h('ul', { class: 'product-list' }, items.map((item) => productCard(item.product, item)))),
+      h('p', {}, "Products you've ordered before. Quantities are filled in from your last order."),
+      productListing(items, {
+        page: 'reorder',
+        originalLabel: 'Most recently ordered',
+        renderCard: (item) => productCard(item.product, item),
+      })),
   };
 }
 
@@ -269,8 +272,10 @@ export function subcategoryView(data, category, sub) {
         { label: sub.name },
       ]),
       h('h1', {}, sub.name),
-      h('p', { class: 'count' }, plural(products.length, 'product')),
-      h('ul', { class: 'product-list' }, products.map((product) => productCard(product)))),
+      productListing(products.map((product) => ({ product })), {
+        page: 'subcategory',
+        renderCard: (entry) => productCard(entry.product),
+      })),
   };
 }
 
@@ -287,20 +292,19 @@ export function searchView(data, query) {
     };
   }
 
-  const { total, results } = searchProducts(data, trimmed);
-  let summary;
-  if (total === 0) summary = 'No products found. Try fewer or different words.';
-  else if (total > results.length) {
-    summary = `Showing the first ${results.length} of ${plural(total, 'product')}. `
-      + 'Add more words to narrow the search.';
-  } else summary = `${plural(total, 'product')} found.`;
+  const results = searchProducts(data, trimmed);
 
   return {
     title: `Search: ${trimmed}`,
     content: h('section', {},
       h('h1', {}, `Search results for “${trimmed}”`),
-      h('p', { class: 'count', role: 'status' }, summary),
-      results.length ? h('ul', { class: 'product-list' }, results.map((product) => productCard(product))) : null),
+      productListing(results.map((product) => ({ product })), {
+        page: 'search',
+        originalLabel: 'Best match',
+        limit: MAX_RESULTS,
+        emptyMessage: 'No products found. Try fewer or different words.',
+        renderCard: (entry) => productCard(entry.product),
+      })),
   };
 }
 

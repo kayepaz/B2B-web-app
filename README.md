@@ -47,6 +47,22 @@ After the first visit the app works offline: you can browse every product
 cart and submit Order Requests. They're sent automatically when you
 reconnect.
 
+### Sorting, filtering and views
+
+Every page that lists products (subcategories, search results and
+Re-Order) can:
+
+- **Sort** by name (A to Z or Z to A) or price (low to high or high to
+  low). Search results can also be sorted by best match, and Re-Order by
+  most recently ordered.
+- **Filter by availability:** Active, Backordered and Discontinued, each
+  with a count.
+- **Filter by name:** plain text matches anywhere in the name; `*` matches
+  any text and `?` any single character, so `apex*` finds names starting
+  with "Apex" and `*cs-1??` finds models CS-100 to CS-199.
+- **Switch between tiles and a compact list.** Your choice of view is
+  remembered, and each kind of page remembers its sort.
+
 ### Scanning barcodes
 
 - **Camera:** tap **Scan** in the header, then **Start camera**. Choose
@@ -111,6 +127,7 @@ app/                 The PWA itself (served as static files)
   js/format.js       Price, date and address formatting
   js/pwa.js          Registers the service worker; Install button; offline notice
   js/search.js       Product search
+  js/listview.js     Sorting, filters and tiles/list view for product lists
   js/barcode.js      Draws and reads UPC-A / EAN-13 barcodes (no libraries)
   js/scanner.js      Camera and handheld-scanner input
   js/scanview.js     The Scan page

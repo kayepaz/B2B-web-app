@@ -36,6 +36,7 @@ const APP_FILES = [
   'js/db.js',
   'js/dom.js',
   'js/format.js',
+  'js/listview.js',
   'js/orders.js',
   'js/pwa.js',
   'js/scanner.js',
