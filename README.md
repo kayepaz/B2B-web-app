@@ -34,7 +34,18 @@ The latest version of `main` is published at
 
 It's rebuilt automatically by the
 [Deploy to GitHub Pages](.github/workflows/pages.yml) workflow whenever
-`main` changes. Carts are saved in your own browser only.
+`main` changes. Carts and Order Requests are saved in your own browser only.
+
+### Install it and use it offline
+
+- **Chrome or Edge (Windows, Mac, Linux, Android):** click **Install app**
+  in the header, or use the install icon in the address bar.
+- **iPhone or iPad (Safari):** tap **Share**, then **Add to Home Screen**.
+
+After the first visit the app works offline: you can browse every product
+(images you've already seen, plus a placeholder for the rest), fill your
+cart and submit Order Requests. They're sent automatically when you
+reconnect.
 
 ## Running it locally
 
@@ -52,6 +63,10 @@ Then open <http://localhost:8000>. Browsers allow service workers on
 `localhost`, so the PWA features will work without HTTPS during
 development.
 
+If you add a file to `app/`, also add it to `APP_FILES` in `app/sw.js`
+so it works offline. `python3 tools/check_offline_files.py` checks this,
+and the deploy fails if something is missing.
+
 The generator is deterministic: the same `--seed` always produces the same
 data. Run `python3 tools/generate_data.py --help` for options, such as
 `--products 500` for a smaller data set.
@@ -61,6 +76,9 @@ data. Run `python3 tools/generate_data.py --help` for options, such as
 ```
 app/                 The PWA itself (served as static files)
   index.html         The single page the app runs in
+  manifest.webmanifest  App name, icons and colours for installing
+  sw.js              Service worker: offline support
+  icons/             App icons
   css/styles.css     All styles
   js/app.js          Entry point: routing and page rendering
   js/views.js        One function per screen
@@ -71,13 +89,15 @@ app/                 The PWA itself (served as static files)
   js/api.js          Pretend order-processing server (replace for real use)
   js/session.js      Stub sign-in (stand-in for Entra SSO)
   js/dom.js          Safe element builder (no innerHTML)
-  js/format.js       Price and number formatting
+  js/format.js       Price, date and address formatting
+  js/pwa.js          Registers the service worker; Install button; offline notice
   data/              Generated JSON data (not committed)
   images/products/   Generated product images (not committed)
 docs/                Project documentation
   data-model.md      Shape of each data file
 tools/
   generate_data.py   Sample data generator (Python standard library only)
+  check_offline_files.py  Checks every app file is listed in sw.js
 ```
 
 ## Sample data

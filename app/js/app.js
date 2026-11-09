@@ -17,6 +17,7 @@ import { getData } from './data.js';
 import { currentCustomerId, signOut } from './session.js';
 import { useCartFor, itemCount, onCartChange } from './cart.js';
 import { onOrdersChange, sendQueued } from './orders.js';
+import { startPwa } from './pwa.js';
 import { plural } from './format.js';
 import {
   loginView, categoriesView, categoryView, subcategoryView, productView, cartView,
@@ -177,3 +178,4 @@ onOrdersChange(() => {
 window.addEventListener('hashchange', () => render());
 render();
 sendQueued(); // send anything saved while offline last time
+startPwa();

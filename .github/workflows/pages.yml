@@ -32,6 +32,16 @@ jobs:
       - name: Generate sample data
         run: python3 tools/generate_data.py
 
+      - name: Check every app file is available offline
+        run: python3 tools/check_offline_files.py
+
+      # A new version string makes browsers install the updated service
+      # worker, which downloads fresh copies of the app for offline use.
+      - name: Stamp the service worker with this commit
+        run: |
+          sed -i "s/^const VERSION = 'dev';/const VERSION = '${GITHUB_SHA:0:12}';/" app/sw.js
+          grep -q "^const VERSION = '${GITHUB_SHA:0:12}';" app/sw.js
+
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
