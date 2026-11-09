@@ -1,0 +1,18 @@
+# Generated sample data (run: python3 tools/generate_data.py)
+app/data/
+app/images/products/
+
+# Python
+__pycache__/
+*.pyc
+
+# Editors and OS files
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local secrets (never commit these)
+.env
+.env.*
