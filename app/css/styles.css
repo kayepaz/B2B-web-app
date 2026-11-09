@@ -382,9 +382,63 @@ main:focus { outline: none; }
 .subtotal { display: flex; align-items: baseline; gap: 1rem; margin: 0; font-weight: 600; }
 .fine-print { color: var(--muted); font-size: 0.85rem; }
 
+/* ---------------------------------------------------------------- Checkout and Order Requests */
+
+a.primary-button { display: inline-block; text-decoration: none; text-align: center; }
+
+.header-link {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+}
+.header-link:hover { background: #ffffff1f; }
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.field-label { display: block; font-weight: 600; margin-bottom: 0.35rem; }
+
+select {
+  font: inherit;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  min-width: 16rem;
+  max-width: 100%;
+}
+
+address { font-style: normal; display: flex; flex-direction: column; }
+.ship-to-address { margin-top: 0.6rem; }
+
+.cart-summary .status-note { align-self: stretch; }
+
+.badge-order-queued { background: var(--warning-bg); color: var(--warning-text); }
+.badge-order-sent { background: #e2f3e6; color: #1d5e2c; }
+.status-order-queued { background: var(--warning-bg); color: var(--warning-text); }
+.status-order-sent { background: #e2f3e6; color: #1d5e2c; }
+
+.order-facts .product-facts { margin: 0; }
+
 /* ---------------------------------------------------------------- Small screens */
 
 @media (max-width: 800px) {
+  .cart-table.order-table tr,
+  .cart-table.orders-list tr { padding-left: 0.75rem; min-height: 0; }
+  .orders-list td:not(.num)[data-label] { display: flex; justify-content: space-between; }
+  .orders-list td:not(.num)[data-label]::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
   .product-detail-layout { grid-template-columns: 1fr; }
   .product-detail-layout img { max-width: 320px; }
 
@@ -416,6 +470,8 @@ main:focus { outline: none; }
 
 @media (max-width: 600px) {
   .signed-in-as { display: none; }
+  .user-area { gap: 0.4rem; }
+  .header-link, .cart-link { padding: 0.3rem 0.4rem; }
 }
 
 /* ---------------------------------------------------------------- Small screens */

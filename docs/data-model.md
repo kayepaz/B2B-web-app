@@ -121,8 +121,57 @@ email, so each customer needs one.
 
 `line2` is an empty string when not used.
 
-## Order Requests (planned)
+## Data stored in the browser
 
-Order Requests are created in the app and stored in IndexedDB, not
-downloaded. Each line records only a product, a quantity and the unit price
-at the time of the order. No taxes or fees are calculated.
+These are created in the app and kept in the browser's IndexedDB database
+(`b2b-web-app`), not downloaded. Storage changes go through `upgrade()` in
+`app/js/db.js`, which keeps existing data.
+
+### carts
+
+One record per customer.
+
+```json
+{
+  "customerId": "cust-4",
+  "items": [{ "productId": "prod-1", "quantity": 3 }],
+  "updatedAt": "2026-11-09T19:52:44.000Z"
+}
+```
+
+Carts store no prices; the current product price is always shown.
+
+### orderRequests
+
+One record per Order Request, indexed by `customerId`. Each line records the
+product, the quantity and the **unit price at the moment of submission**. No
+taxes, delivery fees or other charges are calculated.
+
+```json
+{
+  "id": "OR-20261109-G2JCJ",
+  "customerId": "cust-4",
+  "companyId": "co-3",
+  "locationId": "loc-5",
+  "createdAt": "2026-11-09T19:52:44.000Z",
+  "status": "sent",
+  "sentAt": "2026-11-09T19:52:45.000Z",
+  "confirmationNumber": "CONF-EVP9KY34",
+  "lines": [
+    { "productId": "prod-1", "itemNumber": "WID-00001",
+      "name": "Cobalt Steel Widget CS-125", "quantity": 3, "unitPriceCents": 2349 }
+  ],
+  "totalCents": 19345
+}
+```
+
+`locationId` is the ship-to location, chosen from the customer's company's
+locations at checkout.
+
+| `status` | Meaning                                                         |
+|----------|-----------------------------------------------------------------|
+| `queued` | Saved; waiting to send (for example, while offline)             |
+| `sent`   | Accepted by the processing system; the customer will be emailed |
+
+`sentAt` and `confirmationNumber` are only present once sent. Sending is
+simulated in `app/js/api.js`.
